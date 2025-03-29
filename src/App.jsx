@@ -45,6 +45,8 @@ const TypingApp = () => {
   const [questionCount, setQuestionCount] = useState(10); // デフォルトは10問
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [sessionResults, setSessionResults] = useState([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [wpm, setWpm] = useState(0);
   const inputRef = useRef(null);
 
   // 次の問題を取得
@@ -74,6 +76,8 @@ const TypingApp = () => {
       setCurrentPosition(0);
       setMistakes(0);
       setCompleted(false);
+      setIsTyping(false);
+      setWpm(0);
       
       // 入力フィールドにフォーカス
       if (inputRef.current) {
@@ -82,10 +86,27 @@ const TypingApp = () => {
     }
   }, [mode]);
 
+  // WPMの計算と更新
+  useEffect(() => {
+    let interval;
+    if (isTyping && startTime && !completed) {
+      interval = setInterval(() => {
+        const timeInMinutes = (Date.now() - startTime) / 60000;
+        const currentWpm = (userInput.length / 5) / timeInMinutes;
+        setWpm(Math.round(currentWpm));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isTyping, startTime, userInput, completed]);
+
   // 入力の処理
   const handleInput = (e) => {
     const value = e.target.value;
     setUserInput(value);
+    
+    if (!isTyping) {
+      setIsTyping(true);
+    }
     
     // 正確に入力されているかチェック
     let correctChars = 0;
@@ -106,6 +127,7 @@ const TypingApp = () => {
     if (correctChars === currentText.length) {
       setEndTime(Date.now());
       setCompleted(true);
+      setIsTyping(false);
       
       // 結果を保存
       const result = calculateResults();
@@ -152,6 +174,8 @@ const TypingApp = () => {
     setCurrentPosition(0);
     setMistakes(0);
     setCompleted(false);
+    setIsTyping(false);
+    setWpm(0);
     
     if (inputRef.current) {
       inputRef.current.focus();
@@ -165,6 +189,11 @@ const TypingApp = () => {
     setUserInput('');
     setStartTime(null);
     setEndTime(null);
+    setMistakes(0);
+    setCurrentPosition(0);
+    setCompleted(false);
+    setIsTyping(false);
+    setWpm(0);
   };
 
   // 文字の表示スタイルを決定
@@ -255,15 +284,22 @@ const TypingApp = () => {
           ))}
         </div>
         
-        <input
-          ref={inputRef}
-          type="text"
-          value={userInput}
-          onChange={handleInput}
-          disabled={completed}
-          className="p-3 border-2 border-gray-300 rounded-lg w-full max-w-2xl mb-6 focus:border-indigo-500 focus:outline-none"
-          placeholder="ここに入力してください..."
-        />
+        <div className="w-full max-w-2xl mb-6">
+          <input
+            ref={inputRef}
+            type="text"
+            value={userInput}
+            onChange={handleInput}
+            disabled={completed}
+            className="p-3 border-2 border-gray-300 rounded-lg w-full focus:border-indigo-500 focus:outline-none"
+            placeholder="ここに入力してください..."
+          />
+          {isTyping && (
+            <div className="mt-2 text-sm text-gray-600">
+              現在の速度: {wpm} WPM
+            </div>
+          )}
+        </div>
         
         {completed && results && (
           <div className="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 w-full max-w-2xl">
